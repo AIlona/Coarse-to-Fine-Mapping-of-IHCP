@@ -1,31 +1,48 @@
-function A=LHS(K,NS,NB,M,xDom,yDom,xSource,ySource,xBound,yBound,deltaT)
-% assembles the left-hand side matrix for a given value of parameter s
+function A=LHS(K,NS,NB,M,xDom,yDom,xSource,ySource,xBound,yBound,lmbda)
+% assembles the left-hand side matrix A for the problem
+% only Dirichlet BC are implemented 
 
+% Inputs:
+% K  = # of monomials
+% NS = total # of source points
+% NB = total # of points on the boundary
+% M  = # of points inside of the domain
+% xDom, yDom - vectors with x and y coordinates of points inside of the
+% domain resectiely
+% xSource, ySource - vectors with x and y coordinates of points inside of the
+% domain respectively
+% xBound, yBound - vectors with x and y coordinates of points on the
+% boundary respectively
+% lmbda = 1/sqrt(theta*deltaT), where
+% deltaT is the size of the time step and
+% theta is a parameter, corresponding to discretization in time (0=<theta=<1)
 
-[psiMONO1,psiMONO2,psiMONO3,phiMONO1,phiMONO2,phiMONO3] = monomials(deltaT);
+% 08/15/2015
 
-% 4NB-4 for boundary points, same for source!
-A=zeros(K+3*NB+M,K+3*NB+M);
-%%% W1&W2 blocks
-for j=1:3*NS
+A=zeros(K+NB+M,K+NS+M);
+
+%%% W1&W2 blocks %%%
+for j=1:NS
     for i=1:M
-        A(i,j) = besselk(0,sqrt((1/deltaT)*((xDom(i,1)-xSource(j,1))^2+(yDom(i,1)-ySource(j,1))^2)));
+        A(i,j) = besselk(0,lmbda*sqrt(((xDom(i,1)-xSource(j,1))^2+(yDom(i,1)-ySource(j,1))^2)));
     end
-    for i=(M+1):(3*NB+M)
-        A(i,j) = besselk(0,sqrt((1/deltaT)*((xBound(i-M,1)-xSource(j,1))^2+(yBound(i-M,1)-ySource(j,1))^2)));
+    for i=(M+1):(NB+M)
+        A(i,j) = besselk(0,lmbda*sqrt(((xBound(i-M,1)-xSource(j,1))^2+(yBound(i-M,1)-ySource(j,1))^2)));
     end
 end
 
-%%% Beta1&Beta2 blocks
+%%% Beta1&Beta2 blocks %%%
 for i=1:M
-        A(i,3*NS+M+1) = psiMONO1(xDom(i,1),yDom(i,1));
-        A(i,3*NS+M+2) = psiMONO2(xDom(i,1),yDom(i,1));
-        A(i,3*NS+M+3) = psiMONO3(xDom(i,1),yDom(i,1));
+    [psiMONO,phiMONO] = monomials(lmbda,xDom(i,1),yDom(i,1),K);
+    for j=1:K
+        A(i,NS+M+j) = psiMONO(j);
+    end
 end
-for i=(M+1):(3*NB+M)
-        A(i,3*NS+M+1) = psiMONO1(xBound(i-M,1),yBound(i-M,1));
-        A(i,3*NS+M+2) = psiMONO2(xBound(i-M,1),yBound(i-M,1));
-        A(i,3*NS+M+3) = psiMONO3(xBound(i-M,1),yBound(i-M,1));
+for i=(M+1):(NB+M)
+    [psiMONO,phiMONO] = monomials(lmbda,xBound(i-M,1),yBound(i-M,1),K);
+    for j=1:K
+        A(i,NS+M+j) = psiMONO(j);
+    end
 end
     
  %%% Alpha1&Alpha2&Alpha3 blocks
@@ -34,25 +51,26 @@ end
          rm = sqrt((xDom(i,1)-xDom(j,1))^2+(yDom(i,1)-yDom(j,1))^2);
          phiHat = 0.0;
          if rm>0
-             phiHat = -(4*deltaT^2)*(besselk(0,rm*sqrt(1/deltaT))+log(rm)+1)-(rm^2*log(rm))*deltaT;
+             phiHat = -(4/lmbda^4)*(besselk(0,rm*lmbda)+log(rm)+1)-(rm^2*log(rm))/lmbda^2;
          else
-             phiHat = (4*deltaT^2)*(0.57721+log(sqrt(1/deltaT)/2)-1);
+             phiHat = (4/lmbda^4)*(0.57721+log(lmbda/2)-1);
          end
-         A(i,3*NS+j)=phiHat;
+         A(i,NS+j)=phiHat;
      end
-     for i=(M+1):(M+3*NB)
+     for i=(M+1):(M+NB)
          rm = sqrt((xBound(i-M,1)-xDom(j,1))^2+(yBound(i-M,1)-yDom(j,1))^2);
          phiHat = 0.0;
          if rm>0
-             phiHat = -(4*deltaT^2)*(besselk(0,rm*sqrt(1/deltaT))+log(rm)+1)-(rm^2*log(rm))*deltaT;
+             phiHat = -(4/lmbda^4)*(besselk(0,rm*lmbda)+log(rm)+1)-(rm^2*log(rm))/lmbda^2;
          else
-             phiHat = (4*deltaT^2)*(0.57721+log(sqrt(1/deltaT)/2)-1);
+             phiHat = (4/lmbda^4)*(0.57721+log(lmbda/2)-1);
          end
-         A(i,3*NS+j)=phiHat;
+         A(i,NS+j)=phiHat;
      end
  end
  for i=1:M
-        A(M+3*NB+1,i+3*NS) = phiMONO1(xDom(i,1),yDom(i,1));
-        A(M+3*NB+2,i+3*NS) = phiMONO2(xDom(i,1),yDom(i,1));
-        A(M+3*NB+3,i+3*NS) = phiMONO3(xDom(i,1),yDom(i,1));
+     [psiMONO,phiMONO] = monomials(lmbda,xDom(i,1),yDom(i,1),K);
+     for j=1:K
+        A(M+NB+j,i+NS) = phiMONO(j);
+     end
  end

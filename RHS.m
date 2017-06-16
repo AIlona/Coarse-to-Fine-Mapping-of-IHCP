@@ -1,32 +1,42 @@
-function b=RHS(s,K,xDom,yDom,xBound,yBound)
-% computes the right-hand side for the system using the true solution
-% each row is an RHS for given time step
+function b=RHS(s,K,M,NB,xDom,yDom,xBound,yBound)
+% computes the right-hand side for the system on each time step
+% using the true solution
 
-syms x;
-b=zeros(length(xDom)+length(xBound)+K,1);
+% Inputs:
+% s is the time index
+% K  = # of monomials
+% M  = # of points inside of the domain
+% NB = total # of points on the boundary
+% xDom, yDom - vectors with x and y coordinates of points inside of the
+% domain resectiely
+% xBound, yBound - vectors with x and y coordinates of points on the
+% boundary respectively
+
+% 08/15/2015
+
+
+b=zeros(M+NB+K,1);
+
 %%% Measurements inside of the domain %%%
-%meas=zeros(length(xDom),length(tau));
-for i=1:length(xDom)
-  %  b(i,1)=(1-exp(-4*s))*(cos(2*(xDom(i))) + cos(2*(yDom(i))));  % measurements
-    b(i,1)=s*((xDom(i)-6)^3 + (yDom(i)-6)^3)/6;  % measurements
-  %  appr = polyfit(tau,meas(i,:)', 5);
-  %  f=func(appr);
-  % b(i,1) = laplace(f,x,s);
+% depends on given true RHS function, see  examples below
+for i=1:M
+     b(i,1) = sin(xDom(i))*sin(yDom(i))*sin(s);  
+  %  b(i,1) = s*((xDom(i)-6)^3 + (yDom(i)-6)^3)/6;
+  %  b(i,1)=(1-exp(-4*s))*(cos(2*(xDom(i))) + cos(2*(yDom(i))));  
 end
 
 %%% Boundary conditions %%%
-%bndry=zeros(length(xBound),length(tau));
-for i=1:length(xBound)
-    b(i+length(xDom),1)=s*((xBound(i)-6)^3 + (yBound(i)-6)^3)/6;
-%     b(i+length(xDom),1)=(1-exp(-4*s))*(cos(2*(xBound(i))) + cos(2*(yBound(i))));
-%    appr = polyfit(tau,bndry(i,:)', 5);
-%    f=func(appr);
-%    b(length(xDom)+i,1) = laplace(f,x,s);
+% depends on given true RHS function, see  examples below
+for i=1:NB
+    b(i+M,1)=sin(xBound(i))*sin(yBound(i))*sin(s);
+ %  b(i+M,1)=s*((xBound(i)-6)^3 + (yBound(i)-6)^3)/6;   
+ %  b(i+length(xDom),1)=(1-exp(-4*s))*(cos(2*(xBound(i))) + cos(2*(yBound(i))));
+
 end
 
 %%% Zero part of RHS %%%
 for i=1:K
-    b(length(xDom)+length(xBound)+i,1)=0;
+    b(M+NB+i,1)=0;
 end
 
 end
